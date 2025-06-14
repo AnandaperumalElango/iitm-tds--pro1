@@ -6,5 +6,4 @@ python-multipart
 openai
 sentence-transformers
 faiss-cpu
-discourse-client
 beautifulsoup4
