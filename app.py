@@ -5,21 +5,26 @@ from typing import Optional, List
 import base64
 import io
 import json
+import os
 from PIL import Image
 import pytesseract
 import openai
 
-# Explicitly tell pytesseract where to find the executable
+# Set Tesseract executable path (useful locally)
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# OpenAI API Key
-openai.api_key = "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"
+# Use environment variable for OpenAI key
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Load scraped discourse posts
-with open("discourse_tds_posts.json", "r", encoding="utf-8") as f:
-    discourse_posts = json.load(f)
+# Load discourse posts
+try:
+    with open("discourse_tds_posts.json", "r", encoding="utf-8") as f:
+        discourse_posts = json.load(f)
+except FileNotFoundError:
+    discourse_posts = []
+    print("⚠️ Warning: discourse_tds_posts.json not found.")
 
-# Initialize FastAPI app
+# Initialize FastAPI
 app = FastAPI()
 
 # Enable CORS
@@ -31,32 +36,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request model
+# Request/Response models
 class QuestionInput(BaseModel):
     question: str
     image: Optional[str] = None
 
-# Link model
 class Link(BaseModel):
     url: str
     text: str
 
-# Response model
 class AnswerOutput(BaseModel):
     answer: str
     links: List[Link]
 
-# Extract text from base64 image
+# OCR function
 def extract_text_from_image(base64_str: str) -> str:
     try:
         image_data = base64.b64decode(base64_str)
         image = Image.open(io.BytesIO(image_data))
         return pytesseract.image_to_string(image)
     except Exception as e:
-        print(f"❌ Error extracting text: {e}")
+        print(f"❌ OCR Error: {e}")
         return ""
 
-# Search scraped posts for relevant content
+# Discourse search
 def find_relevant_posts(query, top_k=2):
     results = []
     for post in discourse_posts:
@@ -75,7 +78,7 @@ def find_relevant_posts(query, top_k=2):
             break
     return top_matches
 
-# Generate AI answer using OpenAI
+# OpenAI answer
 def generate_answer(prompt):
     try:
         response = openai.ChatCompletion.create(
@@ -93,7 +96,7 @@ def generate_answer(prompt):
 def get_answer(input_data: QuestionInput):
     query = input_data.question
 
-    # If image is provided, extract text and append
+    # Extract image text if present
     if input_data.image:
         image_text = extract_text_from_image(input_data.image)
         query += " " + image_text
@@ -108,7 +111,12 @@ def get_answer(input_data: QuestionInput):
 
     return AnswerOutput(answer=answer, links=links)
 
-# Root route
+# Root GET route
 @app.get("/")
 def read_root():
     return {"message": "IITM TDS Virtual TA API is live!"}
+
+# Optional root POST route
+@app.post("/")
+def root_post():
+    return {"error": "Please POST to /api/ instead."}
