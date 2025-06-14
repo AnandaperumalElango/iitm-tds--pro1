@@ -1,0 +1,10 @@
+fastapi==0.110.0
+uvicorn==0.29.0
+pillow
+pytesseract
+python-multipart
+openai
+sentence-transformers
+faiss-cpu
+discourse-client
+beautifulsoup4
