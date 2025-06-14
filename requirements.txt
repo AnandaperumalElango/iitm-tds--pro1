@@ -7,3 +7,4 @@ openai
 sentence-transformers
 faiss-cpu
 beautifulsoup4
+dotenv
